@@ -1,0 +1,11 @@
+[project]
+name = "scoring-dashboard"
+version = "1.0.0"
+description = "Dashboard para sistema de scoring crediticio"
+dependencies = [
+    "streamlit>=1.52.0",
+    "plotly>=5.0.0",
+    "pandas>=2.0.0",
+    "boto3>=1.42.0",
+]
+requires-python = ">= 3.11"
