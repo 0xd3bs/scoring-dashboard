@@ -15,13 +15,23 @@ st.set_page_config(
     layout="wide"
 )
 
-AGENT_ARN = os.getenv("AGENT_ARN", "arn:aws:bedrock-agentcore:us-east-1:545009829420:runtime/agentcore-l1wRnE2RMs")
+# Configuración AWS desde secrets de Streamlit o variables de entorno
+if "aws" in st.secrets:
+    AGENT_ARN = st.secrets["agent"]["AGENT_ARN"]
+    boto3_client = boto3.client(
+        "bedrock-agentcore",
+        region_name=st.secrets["aws"]["AWS_DEFAULT_REGION"],
+        aws_access_key_id=st.secrets["aws"]["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=st.secrets["aws"]["AWS_SECRET_ACCESS_KEY"]
+    )
+else:
+    AGENT_ARN = os.getenv("AGENT_ARN", "arn:aws:bedrock-agentcore:us-east-1:545009829420:runtime/agentcore-l1wRnE2RMs")
+    boto3_client = boto3.client("bedrock-agentcore", region_name="us-east-1")
 
 def invoke_agent(cliente: dict, salud_cartera: dict) -> dict:
     """Invoca el agente CRO en AgentCore"""
-    client = boto3.client("bedrock-agentcore", region_name="us-east-1")
     payload = json.dumps({"cliente": cliente, "salud_cartera": salud_cartera}).encode()
-    response = client.invoke_agent_runtime(agentRuntimeArn=AGENT_ARN, payload=payload)
+    response = boto3_client.invoke_agent_runtime(agentRuntimeArn=AGENT_ARN, payload=payload)
     content = [chunk.decode("utf-8") for chunk in response.get("response", [])]
     return json.loads("".join(content))
 
