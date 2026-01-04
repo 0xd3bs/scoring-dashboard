@@ -45,7 +45,7 @@ def main():
         tasa_mora = st.slider("Tasa de Mora Actual (%)", min_value=0.0, max_value=20.0, value=3.5, step=0.1) / 100
         objetivo_mensual = st.number_input("Objetivo Mensual ($)", min_value=0.0, value=500000.0, step=10000.0)
     
-    tab1, tab2 = st.tabs(["📊 Evaluación Individual", "📈 Análisis de Cartera"])
+    tab1, tab2, tab3 = st.tabs(["📊 Evaluación Individual", "📈 Análisis de Cartera", "🔍 Simulaciones"])
     
     with tab1:
         st.header("Evaluación Individual de Cliente")
@@ -105,6 +105,62 @@ def main():
                             {'range': [7, 20], 'color': "red"}]}
         ))
         st.plotly_chart(fig, use_container_width=True)
+    
+    with tab3:
+        st.header("Simulaciones de Escenarios")
+        
+        import numpy as np
+        
+        n_clientes = st.slider("Número de clientes a simular", 10, 100, 20)
+        
+        if st.button("🎲 Generar y Evaluar Clientes"):
+            np.random.seed(42)
+            resultados = []
+            progress_bar = st.progress(0)
+            
+            for i in range(n_clientes):
+                cliente = {
+                    "edad": float(np.clip(np.random.normal(35, 12), 18, 70)),
+                    "ingresos": float(np.random.lognormal(10, 0.5)),
+                    "estabilidad_laboral": float(np.random.uniform(0, 10)),
+                    "ratio_deuda_ingreso": float(np.random.beta(2, 5))
+                }
+                salud = {
+                    "capital_disponible": capital_disponible,
+                    "tasa_mora_actual": tasa_mora,
+                    "objetivo_mensual_desembolso": objetivo_mensual
+                }
+                
+                try:
+                    resultado = invoke_agent(cliente, salud)
+                    resultados.append({
+                        "id": i+1,
+                        "edad": cliente["edad"],
+                        "ingresos": cliente["ingresos"],
+                        "score_ml": resultado["score_ml"],
+                        "decision": resultado["decision"]["decision"]
+                    })
+                except Exception as e:
+                    st.warning(f"Error en cliente {i+1}: {e}")
+                
+                progress_bar.progress((i+1)/n_clientes)
+            
+            if resultados:
+                df = pd.DataFrame(resultados)
+                
+                col1, col2, col3 = st.columns(3)
+                aprobados = len(df[df["decision"] == "APROBADO"])
+                with col1:
+                    st.metric("Aprobados", aprobados, f"{aprobados/len(df)*100:.1f}%")
+                with col2:
+                    st.metric("Score Promedio", f"{df['score_ml'].mean():.3f}")
+                with col3:
+                    st.metric("Total Evaluados", len(df))
+                
+                fig1 = px.histogram(df, x="score_ml", color="decision", title="Distribución de Scores")
+                st.plotly_chart(fig1, use_container_width=True)
+                
+                st.dataframe(df)
 
 if __name__ == "__main__":
     main()
